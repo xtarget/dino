@@ -298,6 +298,7 @@ class RecordEditForm(RecordForm, forms.Form):
     def _delete(self, record):
         record = record.copy()
         record.pop('ttl', None)
+        record.pop('type', None)  # Remove 'type' field - not accepted by delete_record
         pdns().delete_record(zone=self.zone_name, **record)
 
     def update_record(self):
