@@ -38,10 +38,18 @@ class pdns():
         """ convert a record from punnycode format """
         assert isinstance(name, str)
 
-        if name.startswith('*.'):
-            return '*.' + idna.decode(name[2:])
-        else:
-            return idna.decode(name)
+        # Handle special cases that IDNA cannot decode
+        if name == '.' or name == '':
+            return name
+
+        try:
+            if name.startswith('*.'):
+                return '*.' + idna.decode(name[2:])
+            else:
+                return idna.decode(name)
+        except (idna.core.IDNAError, UnicodeError):
+            # If IDNA decoding fails (e.g., single-label domains), return original name
+            return name
 
     @property
     def _server(self):
