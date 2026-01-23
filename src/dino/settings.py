@@ -344,5 +344,11 @@ CUSTOM_RECORD_TYPES = cfg.get(
 RECORD_TYPES = RECORD_TYPES + CUSTOM_RECORD_TYPES
 RECORD_TYPES = [(t, t) for t in RECORD_TYPES]
 
+RECORD_DEFAULT_TTL = cfg.get(
+    'RECORD_DEFAULT_TTL', 300, cast=int,
+    example='3600',
+    doc='Default TTL (Time To Live) value in seconds for new DNS records. Common values: 300 (5 minutes), 3600 (1 hour), 86400 (1 day).',
+)
+
 if not cfg.check_errors():
     sys.exit(1)
