@@ -232,8 +232,9 @@ class ZoneDeleteView(PermissionRequiredMixin, DeleteConfirmView):
 class RecordForm(forms.Form):
     name = forms.CharField(validators=(RecordNameValidator(),), required=False)
     rtype = forms.ChoiceField(choices=settings.RECORD_TYPES, initial='A', label=_('Type'))
-    ttl = forms.IntegerField(min_value=1, initial=300, label=_('TTL'))
+    ttl = forms.IntegerField(min_value=1, initial=settings.RECORD_DEFAULT_TTL, label=_('TTL'))
     content = forms.CharField(max_length=65536)
+    comment = forms.CharField(max_length=65536, required=False, label=_('Comment'))
 
     def __init__(self, zone_name, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -267,6 +268,7 @@ class RecordCreateForm(RecordForm, forms.Form):
                 rtype=self.cleaned_data['rtype'],
                 ttl=self.cleaned_data['ttl'],
                 content=self.cleaned_data['content'],
+                comment=self.cleaned_data.get('comment'),
             )
         except PDNSError as e:
             self.add_error(None, _('PowerDNS error: {}').format(e.message))
@@ -289,7 +291,7 @@ class RecordEditForm(RecordForm, forms.Form):
     def new_record(self):
         return {
             k: v for k, v in self.cleaned_data.items()
-            if k in ['name', 'rtype', 'ttl', 'content']
+            if k in ['name', 'rtype', 'ttl', 'content', 'comment']
         }
 
     def _create(self, record):
@@ -314,6 +316,7 @@ class RecordEditForm(RecordForm, forms.Form):
                 old_content=self.old_record['content'],
                 new_ttl=self.new_record['ttl'],
                 new_content=self.new_record['content'],
+                comment=self.new_record.get('comment'),
             )
             return
 

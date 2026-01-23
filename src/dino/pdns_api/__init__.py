@@ -48,7 +48,8 @@ class pdns():
             else:
                 return idna.decode(name)
         except (idna.core.IDNAError, UnicodeError):
-            # If IDNA decoding fails (e.g., single-label domains), return original name
+            # If IDNA decoding fails (e.g., single-label domains, empty labels),
+            # return the name as-is
             return name
 
     @property
@@ -93,34 +94,69 @@ class pdns():
 
         return content
 
-    def get_all_records(self, zone):
-        zone = self._encode_name(zone)
-        zone = self._server.get_zone(zone)
-        if zone is None:
+    def get_all_records(self, zone, include_comments=True):
+        zone_encoded = self._encode_name(zone)
+        zone_obj = self._server.get_zone(zone_encoded)
+        if zone_obj is None:
             raise PDNSNotFoundException()
-        axfr = zone._get(zone.url + '/export')['zone'].strip()
+
+        # Try to get RRsets with comments from API
+        if include_comments:
+            try:
+                zone_data = zone_obj._get(zone_obj.url)
+                rrsets = zone_data.get('rrsets', [])
+                records = []
+                for rrset in rrsets:
+                    name = self._decode_name(rrset['name'])
+                    rtype = rrset['type']
+                    ttl = rrset['ttl']
+                    # Get comment if exists
+                    comment = None
+                    if rrset.get('comments'):
+                        # Join all comment contents
+                        comment = ' | '.join([c.get('content', '') for c in rrset['comments'] if c.get('content')])
+
+                    for record in rrset.get('records', []):
+                        content = self._decode_content(rtype, record['content'])
+                        records.append({
+                            'zone': self._decode_name(zone_obj.name),
+                            'name': name,
+                            'ttl': ttl,
+                            'rtype': rtype,
+                            'content': content,
+                            'comment': comment,
+                        })
+                return records
+            except Exception:
+                # Fall back to AXFR export if API call fails
+                pass
+
+        # Fallback: use AXFR export (without comments)
+        axfr = zone_obj._get(zone_obj.url + '/export')['zone'].strip()
         lines = [r.split('\t') for r in axfr.split('\n')]
         if lines and len(lines[0]) == 5:
             # https://github.com/Uberspace/dino/issues/83
             return (
                 {
-                    'zone': self._decode_name(zone.name),
+                    'zone': self._decode_name(zone_obj.name),
                     'name': self._decode_name(r[0]),
                     'ttl': int(r[1]),
                     'type': r[2],  # IN
                     'rtype': r[3],  # A, AAAA, SOA, ...
                     'content': self._decode_content(r[3], r[4]),
+                    'comment': None,
                 }
                 for r in lines
             )
         else:
             return (
                 {
-                    'zone': self._decode_name(zone.name),
+                    'zone': self._decode_name(zone_obj.name),
                     'name': self._decode_name(r[0]),
                     'ttl': int(r[1]),
                     'rtype': r[2],
                     'content': self._decode_content(r[2], r[3]),
+                    'comment': None,
                 }
                 for r in lines
             )
@@ -137,19 +173,25 @@ class pdns():
                     (r['rtype'] == rtype or rtype is None)
             ]
 
-    def _update_records(self, zone, name, rtype, ttl, contents):
+    def _update_records(self, zone, name, rtype, ttl, contents, comments=None):
         assert isinstance(contents, list)
         zone = self._encode_name(zone)
         name = self._encode_name(name)
         contents = [self._encode_content(rtype, c) for c in contents]
         rrset = powerdns.RRSet(name, rtype, contents, ttl)
+
+        # Add comments if provided
+        if comments is not None:
+            rrset.comments = comments
+
         zone = self._server.get_zone(zone)
         zone.create_records([rrset])
 
-    def create_record(self, zone, name, rtype, ttl, content):
+    def create_record(self, zone, name, rtype, ttl, content, comment=None):
         contents = [r['content'] for r in self.get_records(zone, name, rtype)]
         contents.append(content)
-        self._update_records(zone, name, rtype, ttl, contents)
+        comments = [comment] if comment else None
+        self._update_records(zone, name, rtype, ttl, contents, comments=comments)
 
     def delete_record(self, zone, name, rtype, content):
         old_records = list(self.get_records(zone, name, rtype))
@@ -163,7 +205,7 @@ class pdns():
         contents = [r['content'] for r in old_records if r['content'] != content]
         self._update_records(zone, name, rtype, ttl, contents)
 
-    def update_record(self, zone, name, rtype, old_content, new_ttl, new_content):
+    def update_record(self, zone, name, rtype, old_content, new_ttl, new_content, comment=None):
         old_records = list(self.get_records(zone, name, rtype))
 
         if not old_records:
@@ -173,8 +215,9 @@ class pdns():
 
         contents = [r['content'] for r in old_records if r['content'] != old_content]
         contents.append(new_content)
+        comments = [comment] if comment else None
 
-        self._update_records(zone, name, rtype, new_ttl, contents)
+        self._update_records(zone, name, rtype, new_ttl, contents, comments=comments)
 
 
 __all__ = [

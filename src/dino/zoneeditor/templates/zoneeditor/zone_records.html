@@ -24,7 +24,8 @@
             <th width="200">{% trans 'Name' %}</th>
             <th width="200">{% trans 'Content' %}</th>
             <th width="50">{% trans 'TTL' %}</th>
-            <th width="200"></th>
+            <th width="150">{% trans 'Comment' %}</th>
+            <th width="150"></th>
         </tr>
     </thead>
     <tbody>
@@ -34,6 +35,7 @@
             <td>{{ rr.name }}</td>
             <td>{{ rr.content }}</td>
             <td>{{ rr.ttl }}</td>
+            <td>{{ rr.comment|default:'' }}</td>
             <td>
                 <form action="{% url 'zoneeditor:zone_record_edit' zone=zone_name %}" method="POST" class="edit">
                     {% csrf_token %}
