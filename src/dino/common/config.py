@@ -1,8 +1,24 @@
 import contextlib
-import distutils.util
 import os
 import sys
 from collections import OrderedDict
+
+
+# Python 3.13+ compatibility: distutils was removed
+def strtobool(val):
+    """Convert a string representation of truth to true (1) or false (0).
+
+    True values are 'y', 'yes', 't', 'true', 'on', and '1'.
+    False values are 'n', 'no', 'f', 'false', 'off', and '0'.
+    Raises ValueError if 'val' is anything else.
+    """
+    val = val.lower()
+    if val in ('y', 'yes', 't', 'true', 'on', '1'):
+        return 1
+    elif val in ('n', 'no', 'f', 'false', 'off', '0'):
+        return 0
+    else:
+        raise ValueError(f"invalid truth value {val!r}")
 
 
 class Setting():
@@ -30,8 +46,9 @@ class Setting():
 class Config():
     CASTS = {
         str: lambda v: v,
+        int: int,  # int cast was missing!
         list: lambda v: v.split(','),
-        bool: distutils.util.strtobool,
+        bool: strtobool,  # Python 3.13+ compatibility fix
     }
     CAST_NAMES = CASTS.keys()
 
