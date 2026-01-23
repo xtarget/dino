@@ -1,3 +1,14 @@
+table.zoneeditor {
+    table-layout: fixed;
+    width: 100%;
+}
+
+table.zoneeditor td {
+    word-wrap: break-word;
+    word-break: break-all;
+    overflow-wrap: break-word;
+}
+
 table.zoneeditor button {
     margin: 0;
     float: right;
