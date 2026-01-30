@@ -117,6 +117,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'csp.middleware.CSPMiddleware',
@@ -200,6 +201,10 @@ TRUST_PROXY = cfg.get(
 if TRUST_PROXY:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     USE_X_FORWARDED_HOST = True
+    # CSRF trusted origins for reverse proxy setup
+    csrf_origins = cfg.get('CSRF_TRUSTED_ORIGINS', [], cast=list)
+    if csrf_origins:
+        CSRF_TRUSTED_ORIGINS = csrf_origins
 
 
 # HTTPS
@@ -247,7 +252,10 @@ USE_TZ = True
 STATIC_URL = '/static/'
 # put static files inside module so they can be shipped using setuptools/pip
 STATIC_ROOT = os.path.join(DEFAULT_BASE_DIR, 'dino/static.dist')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Use WhiteNoise without manifest (serves from STATICFILES_DIRS at runtime)
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+WHITENOISE_AUTOREFRESH = True
+WHITENOISE_USE_FINDERS = True
 
 
 # Logging

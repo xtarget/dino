@@ -13,7 +13,7 @@ class PermissionLevels():
 
     @classmethod
     def max_length(cls):
-        return max(c[0] for c in cls.choices)
+        return max(len(c[0]) for c in cls.choices)
 
 
 class Membership(models.Model):

@@ -55,6 +55,7 @@ setup(
         'django-foundation-formtags>=0.1,<1.0',
         'idna>=3.0',
         'uwsgi>=2.0.20',
+        'mysqlclient>=1.3.13',
     ],
     extras_require={
         'mysql': [
